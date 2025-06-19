@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iris Flower Classification Interactive App</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+            min-height: 100vh;
+            color: #222;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 40px auto;
+            background: rgba(255,255,255,0.95);
+            border-radius: 18px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.2);
+            padding: 32px 28px 28px 28px;
+        }
+        h1, h2, h3 {
+            text-align: center;
+            margin-top: 0;
+        }
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+        .tab {
+            padding: 12px 32px;
+            margin: 0 8px;
+            border-radius: 8px 8px 0 0;
+            background: #f3f3f3;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .tab.active {
+            background: linear-gradient(90deg, #8ec5fc 0%, #e0c3fc 100%);
+            color: #222;
+            box-shadow: 0 2px 8px rgba(31, 38, 135, 0.08);
+        }
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .flex-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 32px;
+            justify-content: center;
+        }
+        .chart-container {
+            width: 350px;
+            background: #f9f9f9;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 2px 8px rgba(31, 38, 135, 0.07);
+            margin-bottom: 24px;
+        }
+        .input-form {
+            max-width: 400px;
+            margin: 0 auto 32px auto;
+            background: #f7f7fa;
+            border-radius: 12px;
+            padding: 24px 18px;
+            box-shadow: 0 2px 8px rgba(31, 38, 135, 0.07);
+        }
+        .input-form label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .input-form input {
+            width: 100%;
+            padding: 8px 10px;
+            margin-bottom: 16px;
+            border: 1px solid #bbb;
+            border-radius: 6px;
+            font-size: 1em;
+        }
+        .input-form button {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(90deg, #8ec5fc 0%, #e0c3fc 100%);
+            border: none;
+            border-radius: 6px;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #222;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .input-form button:hover {
+            background: linear-gradient(90deg, #e0c3fc 0%, #8ec5fc 100%);
+        }
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 auto 24px auto;
+        }
+        .results-table th, .results-table td {
+            border: 1px solid #ddd;
+            padding: 10px 14px;
+            text-align: center;
+        }
+        .results-table th {
+            background: #f3f3f3;
+        }
+        .consensus {
+            font-size: 1.2em;
+            font-weight: 600;
+            text-align: center;
+            margin: 18px 0 0 0;
+        }
+        .explanation {
+            background: #f3f3f9;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 18px 0 0 0;
+            font-size: 1em;
+        }
+        @media (max-width: 900px) {
+            .flex-row {
+                flex-direction: column;
+                align-items: center;
+            }
+            .chart-container {
+                width: 95vw;
+                min-width: 260px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Iris Flower Classification</h1>
+        <div class="tabs">
+            <div class="tab active" data-tab="overview">Data Overview</div>
+            <div class="tab" data-tab="visualizations">Visualizations</div>
+            <div class="tab" data-tab="models">Models</div>
+            <div class="tab" data-tab="predict">Predictions</div>
+        </div>
+        <div id="overview" class="tab-content active">
+            <h2>About the Iris Dataset</h2>
+            <p>The Iris dataset is a classic dataset in machine learning, containing 150 samples of iris flowers from three species: <b>setosa</b>, <b>versicolor</b>, and <b>virginica</b>. Each sample has four features: sepal length, sepal width, petal length, and petal width (all in cm).</p>
+            <div class="flex-row">
+                <div>
+                    <h3>Sample Data</h3>
+                    <table class="results-table" id="sample-table">
+                        <thead>
+                            <tr>
+                                <th>Sepal Length</th>
+                                <th>Sepal Width</th>
+                                <th>Petal Length</th>
+                                <th>Petal Width</th>
+                                <th>Species</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <div>
+                    <h3>Species Distribution</h3>
+                    <canvas id="speciesChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div id="visualizations" class="tab-content">
+            <h2>Data Visualizations</h2>
+            <div class="flex-row">
+                <div class="chart-container">
+                    <h3>Sepal Length vs Sepal Width</h3>
+                    <canvas id="scatter1"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Petal Length vs Petal Width</h3>
+                    <canvas id="scatter2"></canvas>
+                </div>
+            </div>
+            <div class="flex-row">
+                <div class="chart-container">
+                    <h3>Box Plot: Sepal Length</h3>
+                    <canvas id="boxSepalLength"></canvas>
+                </div>
+                <div class="chart-container">
+                    <h3>Box Plot: Petal Width</h3>
+                    <canvas id="boxPetalWidth"></canvas>
+                </div>
+            </div>
+        </div>
+        <div id="models" class="tab-content">
+            <h2>Machine Learning Models</h2>
+            <div class="flex-row">
+                <div style="flex:1; min-width: 260px;">
+                    <h3>K-Nearest Neighbors (KNN)</h3>
+                    <div class="explanation">
+                        KNN is a simple algorithm that classifies a sample based on the majority label among its <b>k</b> closest neighbors in the feature space.
+                    </div>
+                    <div>Accuracy: <span id="knn-acc"></span></div>
+                </div>
+                <div style="flex:1; min-width: 260px;">
+                    <h3>Decision Tree</h3>
+                    <div class="explanation">
+                        Decision Trees split the data based on feature values to create a tree structure, making decisions at each node to classify samples.
+                    </div>
+                    <div>Accuracy: <span id="dt-acc"></span></div>
+                </div>
+                <div style="flex:1; min-width: 260px;">
+                    <h3>Naive Bayes</h3>
+                    <div class="explanation">
+                        Naive Bayes uses probability theory and assumes features are independent. It calculates the probability of each class given the input features.
+                    </div>
+                    <div>Accuracy: <span id="nb-acc"></span></div>
+                </div>
+            </div>
+        </div>
+        <div id="predict" class="tab-content">
+            <h2>Classify a New Iris Flower</h2>
+            <form class="input-form" id="predict-form">
+                <label>Sepal Length (cm): <input type="number" step="0.1" min="0" max="10" id="in-sepal-length" required></label>
+                <label>Sepal Width (cm): <input type="number" step="0.1" min="0" max="10" id="in-sepal-width" required></label>
+                <label>Petal Length (cm): <input type="number" step="0.1" min="0" max="10" id="in-petal-length" required></label>
+                <label>Petal Width (cm): <input type="number" step="0.1" min="0" max="10" id="in-petal-width" required></label>
+                <button type="submit">Predict Species</button>
+            </form>
+            <table class="results-table" id="predict-table" style="display:none;">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Prediction</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <div class="consensus" id="consensus"></div>
+        </div>
+    </div>
+    <script>
+// --- Iris Dataset (first 30 samples for demo, full dataset can be added for more accuracy) ---
+const irisData = [
+    [5.1,3.5,1.4,0.2,"setosa"],[4.9,3.0,1.4,0.2,"setosa"],[4.7,3.2,1.3,0.2,"setosa"],[4.6,3.1,1.5,0.2,"setosa"],[5.0,3.6,1.4,0.2,"setosa"],
+    [5.4,3.9,1.7,0.4,"setosa"],[4.6,3.4,1.4,0.3,"setosa"],[5.0,3.4,1.5,0.2,"setosa"],[4.4,2.9,1.4,0.2,"setosa"],[4.9,3.1,1.5,0.1,"setosa"],
+    [5.4,3.7,1.5,0.2,"setosa"],[4.8,3.4,1.6,0.2,"setosa"],[4.8,3.0,1.4,0.1,"setosa"],[4.3,3.0,1.1,0.1,"setosa"],[5.8,4.0,1.2,0.2,"setosa"],
+    [5.7,4.4,1.5,0.4,"setosa"],[5.4,3.9,1.3,0.4,"setosa"],[5.1,3.5,1.4,0.3,"setosa"],[5.7,3.8,1.7,0.3,"setosa"],[5.1,3.8,1.5,0.3,"setosa"],
+    [7.0,3.2,4.7,1.4,"versicolor"],[6.4,3.2,4.5,1.5,"versicolor"],[6.9,3.1,4.9,1.5,"versicolor"],[5.5,2.3,4.0,1.3,"versicolor"],[6.5,2.8,4.6,1.5,"versicolor"],
+    [5.7,2.8,4.5,1.3,"versicolor"],[6.3,3.3,4.7,1.6,"versicolor"],[4.9,2.4,3.3,1.0,"versicolor"],[6.6,2.9,4.6,1.3,"versicolor"],[5.2,2.7,3.9,1.4,"versicolor"],
+    [6.3,3.3,6.0,2.5,"virginica"],[5.8,2.7,5.1,1.9,"virginica"],[7.1,3.0,5.9,2.1,"virginica"],[6.3,2.9,5.6,1.8,"virginica"],[6.5,3.0,5.8,2.2,"virginica"],
+    [7.6,3.0,6.6,2.1,"virginica"],[4.9,2.5,4.5,1.7,"virginica"],[7.3,2.9,6.3,1.8,"virginica"],[6.7,2.5,5.8,1.8,"virginica"],[7.2,3.6,6.1,2.5,"virginica"]
+];
+const speciesList = ["setosa", "versicolor", "virginica"];
+const featureNames = ["Sepal Length", "Sepal Width", "Petal Length", "Petal Width"];
+
+// --- Tab Navigation ---
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.onclick = function() {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+    };
+});
+
+// --- Populate Sample Table ---
+function populateSampleTable() {
+    const tbody = document.querySelector('#sample-table tbody');
+    tbody.innerHTML = irisData.slice(0, 10).map(row =>
+        `<tr>${row.slice(0,4).map(x => `<td>${x}</td>`).join('')}<td>${row[4]}</td></tr>`
+    ).join('');
+}
+populateSampleTable();
+
+// --- Species Distribution Chart ---
+function drawSpeciesChart() {
+    const ctx = document.getElementById('speciesChart').getContext('2d');
+    const counts = speciesList.map(s => irisData.filter(r => r[4] === s).length);
+    new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: speciesList,
+            datasets: [{
+                data: counts,
+                backgroundColor: ['#8ec5fc', '#e0c3fc', '#f9a8d4'],
+            }]
+        },
+        options: {
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+}
+drawSpeciesChart();
+
+// --- Scatter Plots ---
+function drawScatterPlots() {
+    // Sepal Length vs Sepal Width
+    const ctx1 = document.getElementById('scatter1').getContext('2d');
+    const ctx2 = document.getElementById('scatter2').getContext('2d');
+    const colors = { setosa: '#8ec5fc', versicolor: '#e0c3fc', virginica: '#f9a8d4' };
+    function getScatterData(xi, yi) {
+        return speciesList.map(species => ({
+            label: species,
+            data: irisData.filter(r => r[4] === species).map(r => ({x: r[xi], y: r[yi]})),
+            backgroundColor: colors[species],
+            pointRadius: 5,
+        }));
+    }
+    new Chart(ctx1, {
+        type: 'scatter',
+        data: { datasets: getScatterData(0,1) },
+        options: {
+            plugins: { legend: { position: 'bottom' } },
+            scales: {
+                x: { title: { display: true, text: 'Sepal Length (cm)' } },
+                y: { title: { display: true, text: 'Sepal Width (cm)' } }
+            }
+        }
+    });
+    new Chart(ctx2, {
+        type: 'scatter',
+        data: { datasets: getScatterData(2,3) },
+        options: {
+            plugins: { legend: { position: 'bottom' } },
+            scales: {
+                x: { title: { display: true, text: 'Petal Length (cm)' } },
+                y: { title: { display: true, text: 'Petal Width (cm)' } }
+            }
+        }
+    });
+}
+drawScatterPlots();
+
+// --- Box Plots (using Chart.js bar for min, Q1, median, Q3, max) ---
+function getBoxStats(featureIdx) {
+    return speciesList.map(species => {
+        const vals = irisData.filter(r => r[4] === species).map(r => r[featureIdx]).sort((a,b) => a-b);
+        const n = vals.length;
+        const q1 = vals[Math.floor(n*0.25)];
+        const med = vals[Math.floor(n*0.5)];
+        const q3 = vals[Math.floor(n*0.75)];
+        return {
+            min: vals[0],
+            q1, med, q3,
+            max: vals[n-1]
+        };
+    });
+}
+function drawBoxPlot(canvasId, featureIdx) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    const stats = getBoxStats(featureIdx);
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: speciesList,
+            datasets: [
+                { label: 'Min', data: stats.map(s=>s.min), backgroundColor: '#e0c3fc' },
+                { label: 'Q1', data: stats.map(s=>s.q1), backgroundColor: '#b5ead7' },
+                { label: 'Median', data: stats.map(s=>s.med), backgroundColor: '#8ec5fc' },
+                { label: 'Q3', data: stats.map(s=>s.q3), backgroundColor: '#f9a8d4' },
+                { label: 'Max', data: stats.map(s=>s.max), backgroundColor: '#fbc2eb' },
+            ]
+        },
+        options: {
+            plugins: { legend: { position: 'bottom' } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+drawBoxPlot('boxSepalLength', 0);
+drawBoxPlot('boxPetalWidth', 3);
+
+// --- ML Algorithms (from scratch) ---
+// KNN
+function knnPredict(train, testX, k=5) {
+    const dists = train.map(row => ({
+        dist: Math.sqrt(row.slice(0,4).reduce((s,v,i) => s + (v-testX[i])**2, 0)),
+        label: row[4]
+    }));
+    dists.sort((a,b) => a.dist-b.dist);
+    const topK = dists.slice(0,k);
+    const counts = {};
+    topK.forEach(d => { counts[d.label] = (counts[d.label]||0)+1; });
+    return Object.entries(counts).sort((a,b) => b[1]-a[1])[0][0];
+}
+// Decision Tree (simple, depth=2 for demo)
+function dtTrain(train) {
+    // Find best feature to split on (max info gain)
+    function entropy(rows) {
+        const counts = {};
+        rows.forEach(r => { counts[r[4]] = (counts[r[4]]||0)+1; });
+        return -Object.values(counts).map(c => c/rows.length).reduce((s,p) => s + (p>0 ? p*Math.log2(p) : 0), 0);
+    }
+    function bestSplit(rows) {
+        let best = {gain: -1};
+        for (let f=0; f<4; ++f) {
+            const vals = [...new Set(rows.map(r=>r[f]))];
+            for (let v of vals) {
+                const left = rows.filter(r=>r[f]<=v), right = rows.filter(r=>r[f]>v);
+                if (left.length===0||right.length===0) continue;
+                const gain = entropy(rows) - (left.length/rows.length)*entropy(left) - (right.length/rows.length)*entropy(right);
+                if (gain > best.gain) best = {f, v, gain, left, right};
+            }
+        }
+        return best.gain > 0 ? best : null;
+    }
+    function build(rows, depth=0) {
+        const labels = [...new Set(rows.map(r=>r[4]))];
+        if (labels.length===1 || depth>=2) return {leaf:true, label: labels[0]};
+        const split = bestSplit(rows);
+        if (!split) return {leaf:true, label: labels.sort((a,b)=>rows.filter(r=>r[4]===a).length-rows.filter(r=>r[4]===b).length)[0]};
+        return {
+            leaf: false,
+            f: split.f,
+            v: split.v,
+            left: build(split.left, depth+1),
+            right: build(split.right, depth+1)
+        };
+    }
+    return build(train);
+}
+function dtPredict(tree, x) {
+    if (tree.leaf) return tree.label;
+    return dtPredict(x[tree.f]<=tree.v ? tree.left : tree.right, x);
+}
+// Naive Bayes (Gaussian)
+function nbTrain(train) {
+    const model = {};
+    speciesList.forEach(species => {
+        const rows = train.filter(r=>r[4]===species);
+        model[species] = {
+            prior: rows.length/train.length,
+            mean: [0,0,0,0],
+            std: [0,0,0,0]
+        };
+        for (let f=0; f<4; ++f) {
+            const vals = rows.map(r=>r[f]);
+            const mean = vals.reduce((a,b)=>a+b,0)/vals.length;
+            const std = Math.sqrt(vals.reduce((a,b)=>a+(b-mean)**2,0)/vals.length);
+            model[species].mean[f] = mean;
+            model[species].std[f] = std || 1e-6;
+        }
+    });
+    return model;
+}
+function nbPredict(model, x) {
+    function gauss(x, mu, sigma) {
+        return Math.exp(-0.5*((x-mu)/sigma)**2)/(sigma*Math.sqrt(2*Math.PI));
+    }
+    let best = null, bestP = -1;
+    for (let species of speciesList) {
+        let p = Math.log(model[species].prior);
+        for (let f=0; f<4; ++f) {
+            p += Math.log(gauss(x[f], model[species].mean[f], model[species].std[f]));
+        }
+        if (best===null || p>bestP) { best = species; bestP = p; }
+    }
+    return best;
+}
+
+// --- Train Models and Calculate Accuracy ---
+function accuracy(predictFn, train, ...args) {
+    let correct = 0;
+    for (let row of train) {
+        const pred = predictFn(...args, row.slice(0,4));
+        if (pred === row[4]) correct++;
+    }
+    return (correct/train.length*100).toFixed(1) + '%';
+}
+let dtree = dtTrain(irisData);
+let nbModel = nbTrain(irisData);
+document.getElementById('knn-acc').textContent = accuracy((train, x) => knnPredict(train, x, 5), irisData, irisData, 5);
+document.getElementById('dt-acc').textContent = accuracy((tree, x) => dtPredict(tree, x), irisData, dtree);
+document.getElementById('nb-acc').textContent = accuracy((model, x) => nbPredict(model, x), irisData, nbModel);
+
+// --- Prediction Form ---
+document.getElementById('predict-form').onsubmit = function(e) {
+    e.preventDefault();
+    const x = [
+        parseFloat(document.getElementById('in-sepal-length').value),
+        parseFloat(document.getElementById('in-sepal-width').value),
+        parseFloat(document.getElementById('in-petal-length').value),
+        parseFloat(document.getElementById('in-petal-width').value)
+    ];
+    const preds = [
+        {model: 'KNN', pred: knnPredict(irisData, x, 5)},
+        {model: 'Decision Tree', pred: dtPredict(dtree, x)},
+        {model: 'Naive Bayes', pred: nbPredict(nbModel, x)}
+    ];
+    const tbody = document.querySelector('#predict-table tbody');
+    tbody.innerHTML = preds.map(p => `<tr><td>${p.model}</td><td>${p.pred}</td></tr>`).join('');
+    document.getElementById('predict-table').style.display = '';
+    // Consensus
+    const all = preds.map(p=>p.pred);
+    const consensus = all.every(v=>v===all[0]) ? `All models agree: <b>${all[0]}</b>` : `Models disagree: <b>${all.join(', ')}</b>`;
+    document.getElementById('consensus').innerHTML = consensus;
+};
+    </script>
+</body>
+</html> 
